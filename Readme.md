@@ -1,0 +1,1 @@
+A simple contract that consumes Chainlink Price Feeds.
