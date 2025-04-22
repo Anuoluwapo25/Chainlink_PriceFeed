@@ -1,20 +1,20 @@
-import { useState } from 'react'
-import './App.css'
-import PriceFeed from './Components/PriceFeed';
+import { useState } from 'react';
+import Header from './Components/Header';
+import HomePage from './Pages/LandingPage';
+import DashboardPage from './Pages/DataFeed';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentPage, setCurrentPage] = useState<'home' | 'dashboard'>('home');
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Chainlink Price Feed Dashboard</h1>
-      </header>
-      <main>
-        <PriceFeed />
-      </main>
+    <div className="min-h-screen bg-gray-900 text-white">
+      <Header 
+        setCurrentPage={setCurrentPage} 
+        currentPage={currentPage} 
+      />
+      {currentPage === 'home' ? <DashboardPage /> : <DashboardPage />}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

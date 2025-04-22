@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract SimpleToken is ERC20, Ownable {
-    constructor() ERC20('SimpleToken', 'SMT') Ownable(msg.sender) {
+    constructor() ERC20('SimpleToken', 'SMT') Ownable() {
         _mint(msg.sender, 1000 * 10 ** decimals());
     }
     

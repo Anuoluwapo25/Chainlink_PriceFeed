@@ -1,0 +1,9 @@
+{
+  "networkName": "sepolia",
+  "token": {
+    "address": "0x87ce8064409E7561CC96aF85D1B993D4B4E874FC"
+  },
+  "priceMonitor": {
+    "address": "0x012466c1a9E5C0165F74203865aC9FE4B7ac317f"
+  }
+}
