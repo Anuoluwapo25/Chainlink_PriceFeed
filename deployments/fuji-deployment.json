@@ -1,0 +1,9 @@
+{
+  "networkName": "fuji",
+  "token": {
+    "address": "0x5a33691DF37A1FEd3b5E7e3Ed6d303BBd09F7640"
+  },
+  "priceMonitor": {
+    "address": "0xDd6cee57eDdB7052a204663915f6AA5dF83eD9E6"
+  }
+}

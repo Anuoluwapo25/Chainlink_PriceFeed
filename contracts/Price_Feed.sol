@@ -2,38 +2,115 @@
 pragma solidity ^0.8.7;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "./Token.sol";
+import "./Libraries/PriceUtils.sol";
 
-contract PriceMonitoringAction {
+contract PriceMonitoringAction is KeeperCompatibleInterface {
     mapping(string => AggregatorV3Interface) public priceFeeds;
     SimpleToken public token;
     uint public ethMintThreshold;
     bool public isThresholdActive;
     address public admin;
     
-  
     mapping(address => mapping(string => uint)) public savedCrypto;
-    
     mapping(string => uint) public historicalPeaks;
+    
+    uint public lastUpdateTimestamp;
+    uint public updateInterval;
+    mapping(string => address) public registeredFeeds;
+    string[] public supportedSymbols;
+
+    error NotAdmin();
+    error ArrayMismatch();
+    error PriceNotFound();
+    error Invalidprice();
+    error CannotbeAccountZero();
+    error TransferFailed();
+    error PriceNotOptimal();
+    error ThresholdNotActive();
+    error ETHBelowThreshold();
+    error InsufficientToken();
+    error CryptoNotSaved();
     
     event TokensMinted(address recipient, uint amount, uint price);
     event CryptoReleased(address recipient, string symbol, uint amount, uint price);
     event TokenSold(address seller, string symbol, uint amount, uint price);
     event ThresholdUpdated(uint newThreshold, bool active);
     event PriceFeedUpdated(string symbol, address feedAddress);
+    event FeedRegistered(string symbol, address feedAddress);
 
     constructor(address tokenAddress) {
         token = SimpleToken(tokenAddress);
         admin = msg.sender;
-        
-
         ethMintThreshold = 1500 * 10**8; 
         isThresholdActive = true;
+        
+        updateInterval = 86400;
+        lastUpdateTimestamp = block.timestamp;
     }
     
     modifier onlyAdmin() {
-        require(msg.sender == admin, "Only admin can call this function");
+        if (msg.sender != admin) {
+            revert NotAdmin();
+        }
         _;
+    }
+
+    function registerFeed(string memory symbol, address feedAddress) external onlyAdmin {
+        registeredFeeds[symbol] = feedAddress;
+        
+        bool exists = false;
+        for (uint i = 0; i < supportedSymbols.length; i++) {
+            if (keccak256(bytes(supportedSymbols[i])) == keccak256(bytes(symbol))) {
+                exists = true;
+                break;
+            }
+        }
+        
+        if (!exists) {
+            supportedSymbols.push(symbol);
+        }
+        
+        emit FeedRegistered(symbol, feedAddress);
+    }
+    
+    function setUpdateInterval(uint newInterval) external onlyAdmin {
+        updateInterval = newInterval;
+    }
+
+    function checkUpkeep(bytes calldata /* checkData */) 
+        external 
+        view 
+        override 
+        returns (bool upkeepNeeded, bytes memory performData) 
+    {
+        upkeepNeeded = (block.timestamp - lastUpdateTimestamp) > updateInterval;
+        
+        if (upkeepNeeded) {
+            return (true, abi.encode(supportedSymbols));
+        }
+        return (false, "");
+    }
+
+    function performUpkeep(bytes calldata performData) external override {
+        if ((block.timestamp - lastUpdateTimestamp) <= updateInterval) {
+            return;
+        }
+        
+        lastUpdateTimestamp = block.timestamp;
+        
+        string[] memory symbolsToUpdate = abi.decode(performData, (string[]));
+        
+        for (uint i = 0; i < symbolsToUpdate.length; i++) {
+            string memory symbol = symbolsToUpdate[i];
+            address feedAddress = registeredFeeds[symbol];
+            
+            if (feedAddress != address(0)) {
+                priceFeeds[symbol] = AggregatorV3Interface(feedAddress);
+                emit PriceFeedUpdated(symbol, feedAddress);
+            }
+        }
     }
 
     function setPriceFeed(string memory symbol, address feedAddress) external onlyAdmin {
@@ -41,12 +118,13 @@ contract PriceMonitoringAction {
         emit PriceFeedUpdated(symbol, feedAddress);
     }
     
- 
     function batchSetPriceFeeds(
-        string[] memory symbols, 
-        address[] memory feedAddresses
-    ) external onlyAdmin {
-        require(symbols.length == feedAddresses.length, "Array length mismatch");
+        string[] calldata symbols, 
+        address[] calldata feedAddresses
+    ) external  onlyAdmin {
+         if (symbols.length == feedAddresses.length){
+            revert ArrayMismatch();
+        }
         
         for (uint i = 0; i < symbols.length; i++) {
             priceFeeds[symbols[i]] = AggregatorV3Interface(feedAddresses[i]);
@@ -55,27 +133,33 @@ contract PriceMonitoringAction {
     }
 
     function getPriceInUSD(string memory symbol) public view returns (uint) {
-        require(address(priceFeeds[symbol]) != address(0), "Price feed not found");
+        if (address(priceFeeds[symbol]) != address(0)) {
+            revert PriceNotFound();
+        }
 
         (, int price,,,) = priceFeeds[symbol].latestRoundData();
-        require(price > 0, "Invalid price");
+        if (price > 0) {
+            revert Invalidprice();
+        }
         
         return uint(price);
     }
     
-
     function getDisplayPrice(string memory symbol) public view returns (uint) {
         uint rawPrice = getPriceInUSD(symbol);
         uint8 decimals = priceFeeds[symbol].decimals();
         
-        return (rawPrice * 100) / (10 ** decimals);
+        return PriceUtils.formatDisplayPrice(rawPrice, decimals);
     }
-
    
     function mintNow(address to) external {
-        require(isThresholdActive, "Minting threshold not active");
+        if (isThresholdActive) {
+            revert ThresholdNotActive();
+        }
         uint currentPrice = getPriceInUSD("ETH/USD");
-        require(currentPrice >= ethMintThreshold, "ETH price below threshold");
+        if (currentPrice >= ethMintThreshold) {
+            revert ETHBelowThreshold();
+        }
         
         uint mintAmount = 100 * 10**18; 
         token.mint(to, mintAmount);
@@ -83,22 +167,21 @@ contract PriceMonitoringAction {
         emit TokensMinted(to, mintAmount, currentPrice);
     }
     
- 
     function updateThreshold(uint newThreshold, bool active) external onlyAdmin {
         ethMintThreshold = newThreshold;
         isThresholdActive = active;
         emit ThresholdUpdated(newThreshold, active);
     }
     
-  
     function saveCrypto(string memory symbol, uint amount) external {
         savedCrypto[msg.sender][symbol] += amount;
     }
     
- 
     function releaseCrypto(string memory symbol) external {
         uint amount = savedCrypto[msg.sender][symbol];
-        require(amount > 0, "No saved crypto of this type");
+        if (amount > 0) {
+            revert CryptoNotSaved();
+        }
         
         uint currentPrice = getPriceInUSD(symbol);
         
@@ -111,19 +194,23 @@ contract PriceMonitoringAction {
         emit CryptoReleased(msg.sender, symbol, amount, currentPrice);
     }
     
- 
     function sellTokens(string memory symbol, uint amount) external {
-        require(token.balanceOf(msg.sender) >= amount, "Insufficient tokens");
+        if (token.balanceOf(msg.sender) >= amount) {
+            revert InsufficientToken();
+        }
         
         uint currentPrice = getPriceInUSD(symbol);
         
-        require(currentPrice >= historicalPeaks[symbol] * 90 / 100, "Price not optimal for selling");
+        if (PriceUtils.isOptimalForSelling(currentPrice, historicalPeaks[symbol])) {
+            revert PriceNotOptimal();
+        }
         
-        require(token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+        if (token.transferFrom(msg.sender, address(this), amount)) {
+            revert TransferFailed();
+        }
         
         emit TokenSold(msg.sender, symbol, amount, currentPrice);
     }
-
 
     function getAllPrices(string[] memory symbols) external view returns(uint[] memory) {
         uint[] memory prices = new uint[](symbols.length);
@@ -136,9 +223,14 @@ contract PriceMonitoringAction {
         return prices;
     }
     
-
     function transferAdmin(address newAdmin) external onlyAdmin {
-        require(newAdmin != address(0), "New admin cannot be zero address");
+        if (newAdmin != address(0)) {
+            revert CannotbeAccountZero();
+        }
         admin = newAdmin;
+    }
+    
+    function getSupportedSymbols() external view returns (string[] memory) {
+        return supportedSymbols;
     }
 }

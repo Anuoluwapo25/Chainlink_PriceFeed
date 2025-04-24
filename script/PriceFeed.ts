@@ -1,67 +1,78 @@
-import { ethers } from "hardhat";
-import fs from "fs";
-
-const PRICE_FEEDS_MAINNET: Record<string, string> = {
-  "ETH/USD":  "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
-                
-  "BTC/USD":  "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c",
-  "LINK/USD": "0x2c1d072e956AFFC0D435Cb7AC38EF18d24d9127c",
-  "DAI/USD":  "0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9",
-  "USDC/USD": "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
-  "SOL/USD":  "0x4ffC43a60e009B551865A93d232E33Fce9f01507"
-};
-
+const { ethers } = require("hardhat");
 
 async function main() {
-  const network = await ethers.provider.getNetwork();
-  const networkName = network.name || "sepolia";
+  console.log("Starting deployment process...");
 
-  console.log(`Deploying to ${networkName}...`);
 
-  const SimpleTokenFactory = await ethers.getContractFactory("SimpleToken");
-  const token = await SimpleTokenFactory.deploy();
-  await token.waitForDeployment(); // <- ✅ Recommended in newer versions
-  const tokenAddress = await token.getAddress(); // <- ✅ Use getAddress()
-  console.log(`SimpleToken deployed to: ${tokenAddress}`);
+  const [deployer] = await ethers.getSigners();
+  console.log(`Deploying contracts with the account: ${deployer.address}`);
+  
+ 
+  console.log("Deploying Token contract...");
+  const TokenFactory = await ethers.getContractFactory("SimpleToken");
+  const token = await TokenFactory.deploy();
+  
+  
+  await token.waitForDeployment();
+  const tokenAddress = await token.getAddress();
+  console.log(`Token deployed to: ${tokenAddress}`);
+  
 
-  const PriceMonitoringFactory = await ethers.getContractFactory("PriceMonitoringAction");
-  const priceMonitor = await PriceMonitoringFactory.deploy(tokenAddress);
+  console.log("Deploying PriceMonitoringAction contract...");
+  const PriceMonitoringActionFactory = await ethers.getContractFactory("PriceMonitoringAction");
+  const priceMonitor = await PriceMonitoringActionFactory.deploy(tokenAddress);
+  
+ 
   await priceMonitor.waitForDeployment();
   const priceMonitorAddress = await priceMonitor.getAddress();
   console.log(`PriceMonitoringAction deployed to: ${priceMonitorAddress}`);
+  
 
-  const symbols = Object.keys(PRICE_FEEDS_MAINNET);
-  const addresses = Object.values(PRICE_FEEDS_MAINNET);
+  console.log("Setting up initial price feeds...");
+  const ethUsdFeed = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"; 
+  const btcUsdFeed = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c"; 
+  
 
-  const tx = await priceMonitor.batchSetPriceFeeds(symbols, addresses);
-  await tx.wait();
-  console.log(`Successfully set ${symbols.length} price feeds`);
+  console.log("Registering ETH/USD price feed...");
+  const tx1 = await priceMonitor.registerFeed("ETH/USD", ethUsdFeed);
+  await tx1.wait();
+  console.log("Registered ETH/USD price feed");
+  
+  console.log("Registering BTC/USD price feed...");
+  const tx2 = await priceMonitor.registerFeed("BTC/USD", btcUsdFeed);
+  await tx2.wait();
+  console.log("Registered BTC/USD price feed");
+  
 
-  const initialThreshold = ethers.parseUnits("1500", 8); // Make sure `ethers` is v6
-  const thresholdTx = await priceMonitor.updateThreshold(initialThreshold, true);
-  await thresholdTx.wait();
-
- 
-
-  // Save deployment data
-  const deploymentData = {
-    networkName,
-    token: {
-      address: tokenAddress,
-    },
-    priceMonitor: {
-      address: priceMonitorAddress,
+  console.log("Granting minting permissions to PriceMonitoringAction...");
+  try {
+    if (typeof token.grantRole === "function") {
+      const MINTER_ROLE = await token.MINTER_ROLE();
+      const tx3 = await token.grantRole(MINTER_ROLE, priceMonitorAddress);
+      await tx3.wait();
+      console.log("Minting permissions granted via role");
+    } else if (typeof token.setMinter === "function") {
+      const tx3 = await token.setMinter(priceMonitorAddress);
+      await tx3.wait();
+      console.log("Minting permissions granted via setMinter");
+    } else {
+      console.log("No minting permission function found on token contract");
     }
-  };
-
-  const dir = "./deployments";
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-  fs.writeFileSync(`${dir}/${networkName}-deployment.json`, JSON.stringify(deploymentData, null, 2));
-
-  console.log("Deployment successful ✅");
+  } catch (error) {
+    console.log("Error setting minting permissions:");
+  }
+  
+  console.log("Deployment completed successfully!");
+  
+  console.log("\nContract Addresses:");
+  console.log("-----------------");
+  console.log(`Token: ${tokenAddress}`);
+  console.log(`PriceMonitoringAction: ${priceMonitorAddress}`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

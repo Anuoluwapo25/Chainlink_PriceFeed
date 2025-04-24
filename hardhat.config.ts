@@ -16,6 +16,14 @@ const config: HardhatUserConfig = {
       accounts: [process.env.PRIVATE_KEY!],
       chainId: 84532
     },
+    avalanche: {
+      url: process.env.AVALANCHE_RPC,
+      accounts: [process.env.PRIVATE_KEY!],
+    },
+    fuji: {
+      url: "https://api.avax-test.network/ext/bc/C/rpc",
+      accounts: [process.env.PRIVATE_KEY!],
+    }
     
   },
   etherscan: {
