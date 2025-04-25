@@ -12,7 +12,7 @@ function App() {
         setCurrentPage={setCurrentPage} 
         currentPage={currentPage} 
       />
-      {currentPage === 'home' ? <DashboardPage /> : <DashboardPage />}
+      {currentPage === 'home' ? <HomePage /> : <DashboardPage />}
     </div>
   );
 }

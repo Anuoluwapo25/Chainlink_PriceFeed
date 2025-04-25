@@ -24,8 +24,8 @@ contract PriceMonitoringAction is KeeperCompatibleInterface {
     error NotAdmin();
     error ArrayMismatch();
     error PriceNotFound();
-    error Invalidprice();
-    error CannotbeAccountZero();
+    error InvalidPrice();
+    error CannotBeAccountZero();
     error TransferFailed();
     error PriceNotOptimal();
     error ThresholdNotActive();
@@ -59,6 +59,7 @@ contract PriceMonitoringAction is KeeperCompatibleInterface {
 
     function registerFeed(string memory symbol, address feedAddress) external onlyAdmin {
         registeredFeeds[symbol] = feedAddress;
+        priceFeeds[symbol] = AggregatorV3Interface(feedAddress); // Set the priceFeed too
         
         bool exists = false;
         for (uint i = 0; i < supportedSymbols.length; i++) {
@@ -121,8 +122,9 @@ contract PriceMonitoringAction is KeeperCompatibleInterface {
     function batchSetPriceFeeds(
         string[] calldata symbols, 
         address[] calldata feedAddresses
-    ) external  onlyAdmin {
-         if (symbols.length == feedAddresses.length){
+    ) external onlyAdmin {
+        // FIXED: Changed condition from == to !=
+        if (symbols.length != feedAddresses.length) {
             revert ArrayMismatch();
         }
         
@@ -132,14 +134,15 @@ contract PriceMonitoringAction is KeeperCompatibleInterface {
         }
     }
 
+    // FIXED: Fixed the reversed conditions
     function getPriceInUSD(string memory symbol) public view returns (uint) {
-        if (address(priceFeeds[symbol]) != address(0)) {
+        if (address(priceFeeds[symbol]) == address(0)) {
             revert PriceNotFound();
         }
 
         (, int price,,,) = priceFeeds[symbol].latestRoundData();
-        if (price > 0) {
-            revert Invalidprice();
+        if (price <= 0) {
+            revert InvalidPrice();
         }
         
         return uint(price);
@@ -152,12 +155,13 @@ contract PriceMonitoringAction is KeeperCompatibleInterface {
         return PriceUtils.formatDisplayPrice(rawPrice, decimals);
     }
    
+    // FIXED: Fixed the reversed condition
     function mintNow(address to) external {
-        if (isThresholdActive) {
+        if (!isThresholdActive) {
             revert ThresholdNotActive();
         }
         uint currentPrice = getPriceInUSD("ETH/USD");
-        if (currentPrice >= ethMintThreshold) {
+        if (currentPrice < ethMintThreshold) {
             revert ETHBelowThreshold();
         }
         
@@ -177,9 +181,10 @@ contract PriceMonitoringAction is KeeperCompatibleInterface {
         savedCrypto[msg.sender][symbol] += amount;
     }
     
+    // FIXED: Fixed the reversed condition
     function releaseCrypto(string memory symbol) external {
         uint amount = savedCrypto[msg.sender][symbol];
-        if (amount > 0) {
+        if (amount == 0) {
             revert CryptoNotSaved();
         }
         
@@ -194,18 +199,19 @@ contract PriceMonitoringAction is KeeperCompatibleInterface {
         emit CryptoReleased(msg.sender, symbol, amount, currentPrice);
     }
     
+    // FIXED: Fixed multiple reversed conditions
     function sellTokens(string memory symbol, uint amount) external {
-        if (token.balanceOf(msg.sender) >= amount) {
+        if (token.balanceOf(msg.sender) < amount) {
             revert InsufficientToken();
         }
         
         uint currentPrice = getPriceInUSD(symbol);
         
-        if (PriceUtils.isOptimalForSelling(currentPrice, historicalPeaks[symbol])) {
+        if (!PriceUtils.isOptimalForSelling(currentPrice, historicalPeaks[symbol])) {
             revert PriceNotOptimal();
         }
         
-        if (token.transferFrom(msg.sender, address(this), amount)) {
+        if (!token.transferFrom(msg.sender, address(this), amount)) {
             revert TransferFailed();
         }
         
@@ -223,14 +229,40 @@ contract PriceMonitoringAction is KeeperCompatibleInterface {
         return prices;
     }
     
+    // FIXED: Fixed the reversed condition
     function transferAdmin(address newAdmin) external onlyAdmin {
-        if (newAdmin != address(0)) {
-            revert CannotbeAccountZero();
+        if (newAdmin == address(0)) {
+            revert CannotBeAccountZero();
         }
         admin = newAdmin;
     }
     
     function getSupportedSymbols() external view returns (string[] memory) {
         return supportedSymbols;
+    }
+    
+    // ADDED: Debug function to help diagnose issues
+    function debugPriceFeed(string memory symbol) external view returns (
+        address feedAddress,
+        uint8 decimals,
+        string memory description
+    ) {
+        feedAddress = address(priceFeeds[symbol]);
+        
+        if (feedAddress != address(0)) {
+            try priceFeeds[symbol].decimals() returns (uint8 dec) {
+                decimals = dec;
+            } catch {
+                decimals = 0;
+            }
+            
+            try priceFeeds[symbol].description() returns (string memory desc) {
+                description = desc;
+            } catch {
+                description = "Unknown";
+            }
+        }
+        
+        return (feedAddress, decimals, description);
     }
 }

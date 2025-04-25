@@ -2,24 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { ArrowRight, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 
 const HomePage: React.FC = () => {
-  // Contract-based thresholds (from your smart contract)
   const CONTRACT_ETH_THRESHOLD = 1500;
   
-  // Crypto price data with initial values
   const [cryptoData, setCryptoData] = useState({
     ethereum: { price: 2897.05, change: 3.11, symbol: 'ETH/USD', contractAddress: '0x694AA1769357215DE4FAC081bf1f309aDC325306' },
     bitcoin: { price: 76866.15, change: 1.72, symbol: 'BTC/USD', contractAddress: '0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43' }
   });
 
-  // Wallet connection state
   const [walletConnected, setWalletConnected] = useState(false);
 
-  // Function to check if price meets contract threshold for ETH
   const canMintOrTransfer = () => {
     return cryptoData.ethereum.price >= CONTRACT_ETH_THRESHOLD;
   };
 
-  // Simulate fetching prices (in real app, would connect to web3 provider and call contract)
   useEffect(() => {
     const interval = setInterval(() => {
       setCryptoData(prev => ({
@@ -39,19 +34,16 @@ const HomePage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Mock function to connect wallet (in real app, would use ethers.js or web3.js)
   const connectWallet = () => {
     setWalletConnected(true);
   };
 
-  // Mock function to call contract methods (in real app, would use contract interaction)
   const mintTokens = () => {
     if (!canMintOrTransfer()) {
       alert("ETH price is below threshold. Cannot mint tokens.");
       return;
     }
     alert("Calling mintIfPriceHigh() contract function...");
-    // In real implementation: contract.mintIfPriceHigh(walletAddress)
   };
 
   const transferTokens = () => {
@@ -60,13 +52,11 @@ const HomePage: React.FC = () => {
       return;
     }
     alert("Calling transferIfPriceHigh() contract function...");
-    // In real implementation: contract.transferIfPriceHigh(recipientAddress, amount)
   };
 
   return (
     <div className="bg-gray-900 text-white min-h-screen">
       <div className="container mx-auto px-4 py-6">
-        {/* Header/Hero Section */}
         <div className="bg-gray-800 rounded-md p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
@@ -89,7 +79,6 @@ const HomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Contract Info Banner */}
         <div className="bg-blue-900/30 border border-blue-500 text-blue-300 p-4 rounded-md mb-6">
           <div className="flex items-start">
             <div className="mr-3 mt-1">
@@ -106,9 +95,7 @@ const HomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Price Feeds Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Ethereum Card */}
           <div className="bg-gray-800 rounded-md p-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center">
@@ -173,7 +160,6 @@ const HomePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Bitcoin Card */}
           <div className="bg-gray-800 rounded-md p-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center">

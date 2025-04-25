@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import BlockchainDataProvider, { ContractPriceData, mintTokens } from '../utilities/ LoadBlockchain';
+import BlockchainDataProvider, { ContractPriceData, mintTokens } from '../utilities/LoadBlockchain';
 import MarketDataProvider, { CoinData } from '../utilities/Loadmarket';
 import ETHfeed from './ETHfeed'
 
@@ -14,7 +14,6 @@ const DashboardPage: React.FC = () => {
   
 
   
-  // Handle market data updates
   const handleMarketDataUpdate = (data: {
     marketData: CoinData[];
     topVolume: CoinData[];
@@ -26,13 +25,21 @@ const DashboardPage: React.FC = () => {
     setBiggestIncrease(data.biggestIncrease);
     setBiggestDecrease(data.biggestDecrease);
   };
-  
 
+  const handleBlockchainDataLoaded = (data: {
+    ethPrice: string;
+    priceThreshold: string;
+    isThresholdActive: boolean;
+    contractPrices: ContractPriceData;
+  }) => {
+    console.log("Contract prices loaded:", data.contractPrices);
+    setContractPrices(data.contractPrices);
+  };
+  
   
   return (
     <div className="container mx-auto px-4 py-6">
-      {/* Data providers */}
-
+      <BlockchainDataProvider onDataLoaded={handleBlockchainDataLoaded} />
       <MarketDataProvider 
         contractPrices={contractPrices} 
         onDataLoaded={handleMarketDataUpdate} 

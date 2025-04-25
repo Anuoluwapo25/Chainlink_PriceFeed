@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import axios from 'axios';
-import { ContractPriceData } from './ LoadBlockchain';
+import { ContractPriceData } from './LoadBlockchain';
 
-// Define interfaces for data structures
 export interface CoinData {
   symbol: string;
   name: string;
@@ -15,10 +14,9 @@ export interface CoinData {
   bid: string;
   ask: string;
   positive: boolean;
-  contractPrice?: string; // Optional field for contract price data
+  contractPrice?: string; // Optional 
 }
 
-// Define the props for the component
 interface MarketDataProviderProps {
   contractPrices: ContractPriceData;
   onDataLoaded: (data: {
@@ -29,24 +27,35 @@ interface MarketDataProviderProps {
   }) => void;
 }
 
+
+const symbolMapping: { [key: string]: string } = {
+  'ETH': 'ETH',
+  'BTC': 'BTC',
+  'LINK': 'LINK',
+  'DIA': 'DIA',
+  'USDC': 'USDC',
+  'USDT': 'USDT'
+};
+
 const MarketDataProvider: React.FC<MarketDataProviderProps> = ({ contractPrices, onDataLoaded }) => {
   useEffect(() => {
-    // Load data when component mounts or when contractPrices changes
+    
     loadMarketData();
     
-    // Set up interval to refresh data
+ 
     const interval = setInterval(() => {
       loadMarketData();
-    }, 30000); // Refresh every 30 seconds
+    }, 30000000);
     
     return () => clearInterval(interval);
   }, [contractPrices, onDataLoaded]);
   
   const loadMarketData = async (): Promise<void> => {
     try {
-      // Use CoinGecko API to get market data for coins
+      console.log("Loading market data with contract prices:", contractPrices);
+      
       const response = await axios.get(
-        'https://api.coingecko.com/api/v3/coins/markets', {
+        'https://api.coingecko.com/api/v3/coins/markets/', {
           params: {
             vs_currency: 'aud',
             order: 'market_cap_desc',
@@ -58,8 +67,8 @@ const MarketDataProvider: React.FC<MarketDataProviderProps> = ({ contractPrices,
         }
       );
       
-      // Define interface for API response
       interface CoinGeckoResponse {
+        id: string;
         symbol: string;
         name: string;
         current_price: number;
@@ -69,42 +78,69 @@ const MarketDataProvider: React.FC<MarketDataProviderProps> = ({ contractPrices,
         low_24h: number;
       }
       
-      // Format data for the dashboard
       const formattedData: CoinData[] = response.data.map((coin: CoinGeckoResponse) => {
         const symbol = coin.symbol.toUpperCase();
-        const contractPrice = contractPrices[symbol];
+        
+        const contractSymbol = symbolMapping[symbol] || symbol;
+        const contractPrice = contractPrices[contractSymbol];
+        
+        console.log(`Coin ${symbol}, Contract Symbol: ${contractSymbol}, Contract Price: ${contractPrice}`);
         
         return {
           symbol,
           name: coin.name,
           pair: `${symbol}/AUD`,
-          // Use contract price if available, otherwise use API rice
-          lastPrice: contractPrice ? `$${contractPrice}` : `$${coin.current_price.toLocaleString()}`,
-          change: coin.price_change_percentage_24h.toFixed(2) as unknown as number,
+          lastPrice: `$${coin.current_price.toLocaleString()}`,
+          contractPrice: contractPrice ? `$${contractPrice}` : '-',
+          change: parseFloat(coin.price_change_percentage_24h.toFixed(2)),
           volume: `$${coin.total_volume.toLocaleString()}`,
-          high24: coin.high_24h.toLocaleString(),
-          low24: coin.low_24h.toLocaleString(),
-          bid: `$${coin.current_price.toLocaleString()}`,
-          ask: `$${coin.current_price.toLocaleString()}`,
-          positive: coin.price_change_percentage_24h > 0,
-          contractPrice: contractPrice ? `$${contractPrice}` : undefined
+          high24: `$${coin.high_24h?.toLocaleString() || '0.00'}`,
+          low24: `$${coin.low_24h?.toLocaleString() || '0.00'}`,
+          bid: `$${(coin.current_price * 0.999).toLocaleString()}`,
+          ask: `$${(coin.current_price * 1.001).toLocaleString()}`,
+          positive: coin.price_change_percentage_24h > 0
         };
       });
       
-      // Set top volume coins
-      const volumeSorted = [...formattedData].sort((a, b) => 
+      Object.entries(contractPrices).forEach(([contractSymbol, price]) => {
+        const exists = formattedData.some(coin => 
+          coin.symbol === contractSymbol || symbolMapping[coin.symbol] === contractSymbol
+        );
+        
+        if (!exists && price) {
+          console.log(`Adding missing contract price for ${contractSymbol}: ${price}`);
+          formattedData.push({
+            symbol: contractSymbol,
+            name: contractSymbol,
+            pair: `${contractSymbol}/USD`,
+            lastPrice: '-',
+            contractPrice: `$${price}`,
+            change: 0,
+            volume: '-',
+            high24: '-',
+            low24: '-',
+            bid: '-',
+            ask: '-',
+            positive: true
+          });
+        }
+      });
+      
+      const validVolumeData = formattedData.filter(coin => coin.volume !== '-');
+      const volumeSorted = [...validVolumeData].sort((a, b) => 
         parseFloat(b.volume.replace(/[$,]/g, '')) - parseFloat(a.volume.replace(/[$,]/g, ''))
       );
       const topVolume = volumeSorted.slice(0, 2);
       
-      // Set biggest increase/decrease
-      const increaseSorted = [...formattedData].sort((a, b) => b.change - a.change);
-      const decreaseSorted = [...formattedData].sort((a, b) => a.change - b.change);
+      const validChangeData = formattedData.filter(coin => !isNaN(coin.change));
+      const increaseSorted = [...validChangeData].sort((a, b) => b.change - a.change);
+      const decreaseSorted = [...validChangeData].sort((a, b) => a.change - b.change);
       
-      const biggestIncrease = increaseSorted[0];
-      const biggestDecrease = decreaseSorted[0];
+      const biggestIncrease = increaseSorted.length > 0 ? increaseSorted[0] : null;
+      const biggestDecrease = decreaseSorted.length > 0 ? decreaseSorted[0] : null;
       
-      // Pass data back to parent component
+      console.log("Final formatted data:", formattedData);
+      
       onDataLoaded({
         marketData: formattedData,
         topVolume,
@@ -114,10 +150,33 @@ const MarketDataProvider: React.FC<MarketDataProviderProps> = ({ contractPrices,
       
     } catch (error) {
       console.error("Error loading market data:", error);
+      
+      if (Object.keys(contractPrices).length > 0) {
+        const fallbackData: CoinData[] = Object.entries(contractPrices).map(([symbol, price]) => ({
+          symbol,
+          name: symbol,
+          pair: `${symbol}/USD`,
+          lastPrice: '-',
+          contractPrice: `$${price}`,
+          change: 0,
+          volume: '-',
+          high24: '-',
+          low24: '-',
+          bid: '-',
+          ask: '-',
+          positive: true
+        }));
+        
+        onDataLoaded({
+          marketData: fallbackData,
+          topVolume: [],
+          biggestIncrease: null,
+          biggestDecrease: null
+        });
+      }
     }
   };
   
-  // This component doesn't render anything
   return null;
 };
 

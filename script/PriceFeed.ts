@@ -29,8 +29,12 @@ async function main() {
   
 
   console.log("Setting up initial price feeds...");
-  const ethUsdFeed = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"; 
-  const btcUsdFeed = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c"; 
+  const ethUsdFeed = "0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1"; 
+  const btcUsdFeed = "0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298";
+  const diaUsdFeed = '0xD1092a65338d049DB68D7Be6bD89d17a0929945e';
+  const linkUsdFeed = "0xb113F5A928BCfF189C998ab20d753a47F9dE5A61";
+  const usdc = "0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165";
+  const USDT = "0x3ec8593F930EA45ea58c968260e6e9FF53FC934f";
   
 
   console.log("Registering ETH/USD price feed...");
@@ -42,6 +46,26 @@ async function main() {
   const tx2 = await priceMonitor.registerFeed("BTC/USD", btcUsdFeed);
   await tx2.wait();
   console.log("Registered BTC/USD price feed");
+
+  console.log("Registering DAI/USD price feed...");
+  const tx3 = await priceMonitor.registerFeed("DAI/USD", diaUsdFeed);
+  await tx3.wait();
+  console.log("Registered DAI/USD price feed");
+
+  console.log("Registering LINK/USD price feed...");
+  const tx4 = await priceMonitor.registerFeed("LINK/USD", linkUsdFeed);
+  await tx4.wait();
+  console.log("Registered LINK/USD price feed");
+
+  console.log("Registering USDC/USD price feed...");
+  const tx5 = await priceMonitor.registerFeed("USDC/USD", usdc);
+  await tx5.wait();
+  console.log("Registered USDC/USD price feed");
+
+  console.log("Registering USDT/USD price feed...");
+  const tx6 = await priceMonitor.registerFeed("USDT/USD", USDT);
+  await tx6.wait();
+  console.log("Registered USDT/USD price feed");
   
 
   console.log("Granting minting permissions to PriceMonitoringAction...");

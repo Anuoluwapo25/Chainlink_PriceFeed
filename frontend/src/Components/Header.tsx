@@ -11,7 +11,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage }) => {
     <header className="py-4 px-6 flex justify-between items-center">
       <div className="flex items-center">
         {currentPage === 'home' ? (
-          <div className="text-xl font-bold">CoinMarket</div>
+          <div className="text-xl font-bold">PriceFeed</div>
         ) : (
           <div className="flex items-center">
             <div className="w-8 h-8 mr-2">
@@ -25,9 +25,9 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage }) => {
       <nav className="hidden md:flex items-center space-x-6">
         {currentPage === 'home' ? (
           <>
-            <a href="#" className="hover:text-blue-400">Community</a>
-            <a href="#" className="hover:text-blue-400">Company</a>
-            <a href="#" className="hover:text-blue-400">Contact</a>
+            <a href="#" className="hover:text-blue-400"></a>
+            <a href="#" className="hover:text-blue-400"></a>
+            <a href="#" className="hover:text-blue-400"></a>
           </>
         ) : (
           <>
@@ -44,13 +44,13 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage }) => {
           className="px-4 py-2 border border-gray-600 rounded-md hover:bg-gray-800"
           onClick={() => {}}
         >
-          Log in
+          Connect Wallet
         </button>
         <button 
           className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700"
           onClick={() => setCurrentPage(currentPage === 'home' ? 'dashboard' : 'home')}
         >
-          {currentPage === 'home' ? 'Sign up' : 'Create account'}
+          {currentPage === 'home' ? 'Try Now' : 'Home'}
         </button>
       </div>
     </header>

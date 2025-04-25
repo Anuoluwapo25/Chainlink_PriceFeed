@@ -22,9 +22,10 @@ const HomePage: React.FC = () => {
         </p>
         
         <button className="bg-blue-600 text-white px-8 py-3 rounded-full font-medium flex items-center justify-center mx-auto hover:bg-blue-700">
-          Connect Wallet
+          Check Market Price
           <ArrowRight className="ml-2 h-5 w-5" />
         </button>
+  
       </div>
       
       <div className="mt-16 relative w-full max-w-5xl">
@@ -95,21 +96,7 @@ const HomePage: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className='bg-gray-800/50 w-64 backdrop-blur-md py-6 px-6 bg-purple-500rounded-xl'>
-            <div className='flex  gap-5 '>
-            <ArrowRight className="h-5 w-5 bg-purple-500 rounded-2xl" />
-            <div> Smart Actions </div>
-            </div>
-            <div className='text-sm'>  Release saved crypto when prices peak, sell tokens at optimal times </div>
-            <div className='flex justify-between'>
-              <span>BTC Release</span>
-              <span>SOL Sale</span>
-            </div>
-            <div className=' flex justify-between'>
-              <button className='bg-purple-500 text-sm'>Release</button>
-              <button className='bg-blue-500 text-sm'> Sale</button>
-            </div>
-          </div>
+          
         </div>
       </div>
       
