@@ -45,7 +45,7 @@ const MarketDataProvider: React.FC<MarketDataProviderProps> = ({ contractPrices,
  
     const interval = setInterval(() => {
       loadMarketData();
-    }, 30000000);
+    }, 0);
     
     return () => clearInterval(interval);
   }, [contractPrices, onDataLoaded]);

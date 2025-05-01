@@ -16,7 +16,6 @@ interface BlockchainDataProviderProps {
   }) => void;
 }
 
-// Define all price pairs to fetch
 const PRICE_PAIRS = [
   "ETH/USD",
   "BTC/USD",
@@ -26,10 +25,9 @@ const PRICE_PAIRS = [
   "USDT/USD"
 ];
 
-const contractAddress: string = "";
+const contractAddress: string = "0xa176cC9450730Ae5D8C2b426291C86f84468aD55";
 
 const BlockchainDataProvider: React.FC<BlockchainDataProviderProps> = ({ onDataLoaded }) => {
-  // Test contract basic functionality
   const testContract = async (): Promise<string> => {
     try {
       if (typeof window.ethereum === 'undefined') return "No Ethereum provider";
@@ -63,7 +61,6 @@ const BlockchainDataProvider: React.FC<BlockchainDataProviderProps> = ({ onDataL
   useEffect(() => {
     const initialize = async () => {
       try {
-        // First test basic contract connection
         const testResult = await testContract();
         console.log("Contract test result:", testResult);
         
@@ -78,12 +75,10 @@ const BlockchainDataProvider: React.FC<BlockchainDataProviderProps> = ({ onDataL
           return;
         }
         
-        // Then set up price feeds
         console.log("Setting up price feeds...");
         const setupSuccess = await setupPriceFeeds();
         console.log("Price feed setup result:", setupSuccess);
         
-        // Now load data
         await loadBlockchainData();
       } catch (error) {
         console.error("Initialization error:", error);
@@ -123,24 +118,19 @@ const BlockchainDataProvider: React.FC<BlockchainDataProviderProps> = ({ onDataL
       let thresholdFormatted = "1500.00";
       let thresholdActive = false;
       
-      // Fetch all prices in parallel
       const pricePromises = PRICE_PAIRS.map(async (pricePair) => {
         try {
           console.log(`Fetching price for ${pricePair}...`);
           const priceRaw = await contract.getPriceInUSD(pricePair);
           console.log(`Raw price for ${pricePair}:`, priceRaw.toString());
           
-          // Extract token symbol from pair (e.g. "ETH/USD" -> "ETH")
           const symbol = pricePair.split('/')[0];
           
-          // Chainlink feeds typically use 8 decimals for USD pairs
           const formattedPrice = (Number(priceRaw) / 10**8).toFixed(2);
           
-          // Save to our price data object
           priceData[symbol] = formattedPrice;
           console.log(`${symbol} price: $${formattedPrice}`);
           
-          // Special case for ETH to maintain backwards compatibility
           if (pricePair === "ETH/USD") {
             ethPrice = formattedPrice;
           }
@@ -152,10 +142,8 @@ const BlockchainDataProvider: React.FC<BlockchainDataProviderProps> = ({ onDataL
         }
       });
       
-      // Wait for all price fetches to complete
       await Promise.all(pricePromises);
       
-      // Get ETH threshold
       try {
         console.log("Fetching threshold...");
         const threshold = await contract.ethMintThreshold();
@@ -166,7 +154,6 @@ const BlockchainDataProvider: React.FC<BlockchainDataProviderProps> = ({ onDataL
         console.error("Threshold fetch error:", thresholdError);
       }
       
-      // Get threshold active status
       try {
         console.log("Fetching active status...");
         thresholdActive = await contract.isThresholdActive();

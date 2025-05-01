@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import PriceMonitoringActionABI from '../abis/PriceMonitor2.json';
 
-const contractAddress: string = "";
+const contractAddress: string = "0xa176cC9450730Ae5D8C2b426291C86f84468aD55";
 
 const PRICE_PAIRS = {
   "ETH/USD": "0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1",
